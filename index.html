@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>NFLGROUP2026 Standings</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--muted:#5a6270;--navy:#13294b;--zebra:#f2f5fa;--rule:#13294b;--win:#1e7a3c;--live:#b26a00;--bar:#d9e0ec;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--fg:#e8ecf2;--muted:#9aa4b4;--navy:#2a4a7d;--zebra:#161d28;--rule:#6f8fc4;--win:#5cc581;--live:#f0b453;--bar:#26324a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px Arial,Helvetica,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{margin:0;font-size:26px}
+.sub{color:var(--muted);margin:6px 0 0;font-size:14px}
+.status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
+.chip{font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--bar);color:var(--muted)}
+.chip.live{border-color:var(--live);color:var(--live)}
+.chip.final{border-color:var(--win);color:var(--win)}
+h2{font-size:17px;margin:26px 0 8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px 10px;font-size:14px}
+td{padding:7px 10px}
+th.n,td.n{text-align:right;width:56px}
+td.r{width:28px;color:var(--muted)}
+tbody tr:nth-child(even){background:var(--zebra)}
+tr.sep td{border-top:2px solid var(--rule)}
+tr.lead td{font-weight:bold}
+.prize{font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-left:6px;color:var(--muted);font-weight:normal}
+.games{display:grid;gap:10px}
+.g{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:8px;font-size:14px}
+.t{font-weight:bold}.right{text-align:right}
+.t.w{color:var(--win)}.t.l{color:var(--muted);text-decoration:line-through}
+.bar{height:10px;border-radius:5px;background:var(--bar);overflow:hidden;display:flex}
+.bar span{display:block;background:var(--navy)}
+.cnt{font-size:12px;color:var(--muted);grid-column:1/-1;margin-top:-4px}
+.note{color:var(--muted);font-size:13px;margin-top:24px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Weekly Standings</h1>
+  <p class="sub">NFLGROUP2026 · fewest losses, then points · two prizes</p>
+  <div class="status" id="status"><span class="chip">Loading</span></div>
+  <div id="body"></div>
+  <p class="note">Losses include blank picks. Ties on losses go to most points. Picks for games that haven't kicked off are hidden by Yahoo, so splits fill in at kickoff. This page refreshes itself every few minutes.</p>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fmt(iso){try{return new Date(iso).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+' CT'}catch(e){return iso}}
+function render(d){
+  $('#title').textContent='Week '+d.week+' Standings';
+  const dec=d.games.filter(g=>g.winner).length,tot=d.games.length;
+  $('#status').innerHTML='<span class="chip '+(dec===tot?'final':'live')+'">'+(dec===tot?'Final':dec+' of '+tot+' games final')+'</span><span class="chip">Updated '+esc(fmt(d.updatedAt))+'</span>';
+  let prev=null,h='<h2>Standings</h2><table><thead><tr><th>#</th><th>Entry</th><th class="n">Losses</th><th class="n">Pts</th><th class="n">Left</th></tr></thead><tbody>';
+  d.rows.forEach((r,i)=>{const c=[];if(prev!==null&&r.L!==prev)c.push('sep');if(i===0)c.push('lead');prev=r.L;
+    const tag=i===0?'<span class="prize">1st</span>':i===1?'<span class="prize">2nd</span>':'';
+    h+='<tr class="'+c.join(' ')+'"><td class="r">'+(i+1)+'</td><td>'+esc(r.name)+tag+'</td><td class="n">'+r.L+'</td><td class="n">'+r.pts+'</td><td class="n">'+r.P+'</td></tr>';});
+  h+='</tbody></table><h2>Pick splits</h2><div class="games">';
+  d.games.forEach(g=>{const n=g.favN+g.dogN,p=n?Math.round(100*g.favN/n):0;
+    const fc=g.winner?(g.winner===g.fav?'w':'l'):'',dc=g.winner?(g.winner===g.dog?'w':'l'):'';
+    h+='<div class="g"><span class="t '+fc+'">'+esc(g.fav)+'</span><div class="bar"><span style="width:'+p+'%"></span></div><span class="t right '+dc+'">'+esc(g.dog)+'</span><span class="cnt">'+(n?esc(g.fav)+' '+g.favN+' | '+esc(g.dog)+' '+g.dogN:'Picks hidden until kickoff')+(g.winner?' · '+esc(g.winner)+' won':'')+'</span></div>';});
+  $('#body').innerHTML=h+'</div>';
+}
+async function load(){try{const r=await fetch('standings.json?t='+Date.now(),{cache:'no-store'});render(await r.json())}catch(e){$('#status').innerHTML='<span class="chip">Could not load standings</span>'}}
+load();setInterval(load,180000);
+</script>
+</body>
+</html>
